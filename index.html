@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ジャンプゲーム</title>
+    <linkpreconnect href="https://fonts.googleapis.com">
+        <linkpreconnect href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+            <style>
+                :root {
+                    --color-bg-dark: #121418;
+                    --color-bg-light: #1c2229;
+                    --color-accent: #ff5459;
+                    /* 赤 */
+                    --color-accent-hover: #ff767a;
+                    --color-gold: #ffd700;
+                    --font-game: 'Mochiy Pop One', sans-serif;
+                    --font-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                }
+
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+
+                body {
+                    font-family: var(--font-base);
+                    /* 背景画像の設定 */
+                    background-image: url('background.png');
+                    background-repeat: no-repeat;
+                    background-size: cover;
+                    background-position: center;
+                    background-attachment: fixed;
+                    image-rendering: pixelated;
+
+                    color: #f0f0f0;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    min-height: 100vh;
+                    padding: 40px 20px;
+                }
+
+                .char-card {
+                    position: relative;
+                    /* バブル配置用 */
+                    border: 2px solid #ff5459;
+                    /* 常に赤枠 */
+                    border-radius: 12px;
+                    padding: 15px;
+                    text-align: center;
+                    width: 250px;
+                    /* 横幅を広げて説明文に対応 */
+                    cursor: pointer;
+                    background: #000;
+                    /* 背景黒 */
+                    transition: transform 0.2s;
+                    color: white;
+                    /* テキスト白 */
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    margin-top: 40px;
+                    /* バブルのスペース確保 */
+                }
+
+                .speech-bubble {
+                    position: absolute;
+                    top: -50px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #fff;
+                    color: #000;
+                    padding: 8px 12px;
+                    border-radius: 20px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    white-space: nowrap;
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+                    z-index: 10;
+                }
+
+                .speech-bubble::after {
+                    content: '';
+                    position: absolute;
+                    bottom: -8px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border-width: 8px 8px 0;
+                    border-style: solid;
+                    border-color: #fff transparent;
+                }
+
+                .char-desc {
+                    font-size: 12px;
+                    text-align: left;
+                    margin-top: 10px;
+                    line-height: 1.4;
+                    width: 100%;
+                }
+
+                .difficulty {
+                    color: #FFD700;
+                    /* 金色 */
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                    text-align: center;
+                    width: 100%;
+                }
+
+                .container {
+                    max-width: 860px;
+                    width: 100%;
+                    text-align: center;
+                }
+
+                /* ゲーム画面の枠デザイン */
+                .game-wrapper {
+                    position: relative;
+                    padding: 10px;
+                    background: rgba(0, 0, 0, 0.3);
+                    border-radius: 20px;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                    margin-bottom: 30px;
+                }
+
+                #gameCanvas {
+                    border: 4px solid #2a2a2a;
+                    border-radius: 12px;
+                    background: #000;
+                    box-shadow: 0 0 20px rgba(255, 84, 89, 0.2);
+                    width: 100%;
+                    max-width: 800px;
+                    height: auto;
+                    display: block;
+                    margin: 0 auto;
+                    touch-action: none;
+                    cursor: pointer;
+                }
+
+                /* 操作パネルエリア */
+                .controls {
+                    display: flex;
+                    gap: 15px;
+                    justify-content: center;
+                    flex-wrap: wrap;
+                    margin-bottom: 30px;
+                    padding: 20px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 16px;
+                    backdrop-filter: blur(5px);
+
+                    /* 初期状態は非表示（JSで制御） */
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.5s ease;
+                }
+
+                /* ゲーム開始後に表示するためのクラス */
+                .controls.active {
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+
+                /* ボタンのデザイン */
+                .btn {
+                    font-family: var(--font-game);
+                    padding: 12px 24px;
+                    font-size: 1rem;
+                    border: 2px solid #ffffff;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: all 0.1s ease;
+                    box-shadow: 0 4px 0 #444444;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .btn:active {
+                    transform: translateY(4px);
+                    box-shadow: none;
+                }
+
+                .btn-primary {
+                    background: #000000;
+                    color: #ffffff;
+                    text-shadow: none;
+                }
+
+                .btn-primary:hover:not(:disabled) {
+                    background: #333333;
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 0 #444444;
+                    border-color: #cccccc;
+                }
+
+                .btn:disabled {
+                    background: #222222;
+                    border-color: #555555;
+                    color: #555555;
+                    cursor: not-allowed;
+                    transform: none;
+                    box-shadow: none;
+                }
+
+                /* 説明エリア */
+                .instructions {
+                    text-align: left;
+                    background: rgba(0, 0, 0, 0.4);
+                    padding: 20px 30px;
+                    border-radius: 12px;
+                    border-left: 5px solid var(--color-accent);
+                    font-size: 0.95rem;
+                    line-height: 1.8;
+                    color: #ccc;
+                    max-width: 700px;
+                    margin: 0 auto;
+                }
+
+                .instructions strong {
+                    color: #fff;
+                    font-family: var(--font-game);
+                }
+
+                /* オーバーレイ系（ゲームオーバー画面など） */
+                .game-over {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(20, 20, 20, 0.95);
+                    padding: 40px;
+                    border-radius: 20px;
+                    border: 4px solid var(--color-accent);
+                    text-align: center;
+                    display: none;
+                    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+                    z-index: 20;
+                    width: 80%;
+                    max-width: 400px;
+                }
+
+                .game-over.show {
+                    display: block;
+                    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                }
+
+                .game-over h2 {
+                    font-family: var(--font-game);
+                    color: var(--color-accent);
+                    margin-bottom: 20px;
+                }
+
+                .game-over p {
+                    font-size: 1.2rem;
+                    margin-bottom: 25px;
+                    font-weight: bold;
+                }
+
+                @keyframes popIn {
+                    from {
+                        transform: translate(-50%, -50%) scale(0.5);
+                        opacity: 0;
+                    }
+
+                    to {
+                        transform: translate(-50%, -50%) scale(1);
+                        opacity: 1;
+                    }
+                }
+
+                /* キャラクター選択・ランキングなどのパネル */
+                #charSelectScreen,
+                #rankingScreen {
+                    background: #222;
+                    border: 2px solid #444;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+                    max-width: 800px;
+                    margin: 20px auto;
+                }
+
+                /* スマホ対応 */
+                @media (max-width: 600px) {
+                    h1 {
+                        font-size: 1.5rem;
+                    }
+
+                    .btn {
+                        padding: 10px 20px;
+                        font-size: 0.9rem;
+                    }
+
+                    .controls {
+                        padding: 10px;
+                    }
+
+                    body {
+                        padding: 20px 10px;
+                    }
+                }
+            </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="game-wrapper">
+            <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+            <div style="display: none;">
+                <span id="score">0</span>
+                <span id="lives">3</span>
+                <span id="highScore">0</span>
+            </div>
+
+            <div id="gameOverScreen" class="game-over">
+                <h2>ゲームオーバー</h2>
+                <p id="finalScore">スコア: 0</p>
+                <p id="newRecord" style="color: #4cd137; display: none;">🎉 新記録!</p>
+                <button class="btn btn-primary" onclick="restartGame()">もう一度プレイ</button>
+            </div>
+        </div>
+
+        <div id="controlsPanel" class="controls">
+            <button id="pauseBtn" class="btn btn-primary" onclick="togglePause()">一時停止</button>
+            <button id="charSelectBtn" class="btn btn-primary" onclick="toggleCharSelect()">キャラクター</button>
+            <button id="rankingBtn" class="btn btn-primary" onclick="toggleRanking()">スコアの記録</button>
+        </div>
+
+        <div id="charSelectScreen" style="display: none; margin-top: 20px; padding: 20px;">
+            <h2 style="color: var(--color-accent); margin-bottom: 15px;">キャラクター選択</h2>
+            <div id="characterGrid" style="display: flex; gap: 20px; justify-content: center;">
+                <!-- キャラクター1 (承認欲求くん) -->
+                <div class="char-card" onclick="selectCharacter(0)">
+                    <div class="speech-bubble">頑張ったら、ご飯奢ってくれる？</div>
+                    <div style="font-weight: bold; margin-bottom: 5px; color: white; font-size: 18px;">承認欲求くん</div>
+                    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+                        <img src="s_walk1.png" style="height: 60px; width: auto; image-rendering: pixelated;">
+                    </div>
+                    <div class="difficulty">難易度：★☆☆</div>
+                    <div class="char-desc">
+                        タップするとジャンプすることができるよ！<br>
+                        ２回タップすると２段階ジャンプが可能！
+                    </div>
+                </div>
+                <!-- キャラクター2 (実現欲求くん) -->
+                <div class="char-card" onclick="selectCharacter(1)">
+                    <div class="speech-bubble">早く帰ってお絵描きしたいよ...</div>
+                    <div style="font-weight: bold; margin-bottom: 5px; color: white; font-size: 18px;">実現欲求くん</div>
+                    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+                        <img src="z_walk1.png" style="height: 60px; width: auto; image-rendering: pixelated;">
+                    </div>
+                    <div class="difficulty">難易度：★★★</div>
+                    <div class="char-desc">
+                        タップすると数秒だけ地面の下を潜れるよ！<br>
+                        ２回タップすると飛び出してジャンプする！<br>
+                        <span style="color: #ff5459;">障害物の下から飛び出そうとするとダメージをくらっちゃうよ！</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="toggleCharSelect()" style="margin-top: 15px;">閉じる</button>
+        </div>
+
+        <div id="rankingScreen"
+            style="display: none; margin-top: 20px; padding: 20px; background: #2c2c2c; border-radius: 12px; color: #fff;">
+            <h2 style="color: var(--color-accent); margin-bottom: 15px;">スコアの記録</h2>
+            <div id="rankingList" style="text-align: left; max-width: 400px; margin: 0 auto;">
+            </div>
+            <button class="btn btn-primary" onclick="toggleRanking()" style="margin-top: 15px;">閉じる</button>
+        </div>
+
+        <div class="instructions">
+            <strong>操作方法:</strong> クリック、タップ、またはスペースキーでジャンプ! 空中でもう一度押すと二段ジャンプ!<br>
+            障害物に当たらないように避けて、できるだけ長く走り続けよう!
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const livesElement = document.getElementById('lives');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreElement = document.getElementById('finalScore');
+        const newRecordElement = document.getElementById('newRecord');
+        const controlsPanel = document.getElementById('controlsPanel');
+
+        // ★ゲームの状態管理
+        let gameState = 'TITLE';
+
+        // キャラクター画像の読み込み管理
+        let currentCharacterId = 0; // 0: 承認欲求くん, 1: 実現欲求くん
+        const characterAssets = [
+            // Char 0: 承認欲求くん (s_ prefix)
+            {
+                walk: [], jump: [], dmgWalk: [], dmgJump: []
+            },
+            // Char 1: 実現欲求くん (z_ prefix)
+            {
+                walk: [], jump: [], dmgWalk: [], dmgJump: [], swim: [] // swim added
+            }
+        ];
+
+        // 確実な個別指定で読み込み
+        // Char 0: 承認欲求くん
+        const c0 = characterAssets[0];
+        ['s_walk1.png', 's_walk2.png', 's_walk3.png', 's_walk4.png'].forEach(u => { const i = new Image(); i.src = u; c0.walk.push(i); });
+        ['s_janp1.png', 's_janp2.png'].forEach(u => { const i = new Image(); i.src = u; c0.jump.push(i); });
+        ['s_d_walk1.png', 's_d_walk2.png', 's_d_walk3.png', 's_d_walk4.png'].forEach(u => { const i = new Image(); i.src = u; c0.dmgWalk.push(i); });
+        ['s_d_janp1.png', 's_d_janp2.png'].forEach(u => { const i = new Image(); i.src = u; c0.dmgJump.push(i); });
+
+        // Char 1: 実現欲求くん
+        const c1 = characterAssets[1];
+        ['z_walk1.png', 'z_walk2.png', 'z_walk3.png', 'z_walk4.png'].forEach(u => { const i = new Image(); i.src = u; c1.walk.push(i); });
+        // Jump: 4枚読み込む (前半2枚:上昇, 後半2枚:下降/着地)
+        ['z_janp1.png', 'z_janp2.png', 'z_janp3.png', 'z_janp4.png'].forEach(u => { const i = new Image(); i.src = u; c1.jump.push(i); });
+        ['z_d_walk1.png', 'z_d_walk2.png', 'z_d_walk3.png', 'z_d_walk4.png'].forEach(u => { const i = new Image(); i.src = u; c1.dmgWalk.push(i); });
+        // ダメージジャンプも同様に4枚読み込む (ファイルが存在することを確認済み)
+        ['z_d_janp1.png', 'z_d_janp2.png', 'z_d_janp3.png', 'z_d_janp4.png'].forEach(u => { const i = new Image(); i.src = u; c1.dmgJump.push(i); });
+        // Swim
+        ['z_swim1.png', 'z_swim2.png', 'z_swim3.png', 'z_swim4.png'].forEach(u => { const i = new Image(); i.src = u; c1.swim.push(i); });
+        // 背景・障害物・アイテム
+        const bgSkyImg = new Image(); bgSkyImg.src = 'bg_sky.png';
+        const bgGroundImg = new Image(); bgGroundImg.src = 'bg_ground.png';
+        const obstacle1Img = new Image(); obstacle1Img.src = 'obstacle_1.png';
+        const obstacle2Img = new Image(); obstacle2Img.src = 'obstacle_2.png';
+        const bird1Img = new Image(); bird1Img.src = 'bird_1.png';
+        const bird2Img = new Image(); bird2Img.src = 'bird_2.png';
+        const coinImg = new Image(); coinImg.src = 'coin.png';
+        const heartItemImg = new Image(); heartItemImg.src = 'heart_item.png';
+
+        // コインアニメーション
+        const coinImgs = [];
+        for (let i = 1; i <= 4; i++) {
+            const img = new Image();
+            img.src = `coin_${i}.png`;
+            coinImgs.push(img);
+        }
+
+        // 変数定義
+        let bgGroundOffset = 0;
+        let bgSkyOffset = 0;
+        let gamePaused = false;
+
+        let score = 0;
+        let lives = 3;
+        let highScore = parseInt(localStorage.getItem('jumpGameHighScore') || '0');
+        let gameSpeed = 3;
+        let frameCount = 0;
+
+        // スーパー無敵モード用
+        let comboCoins = 0;
+        let isSuperMode = false;
+        let superModeTimer = 0;
+        let baseSpeed = 0;
+
+        highScoreElement.textContent = highScore;
+
+        // プレイヤー定義
+        const player = {
+            x: 250,
+            y: canvas.height - 95, // Adjusted for character height
+            width: 50,
+            height: 64,
+            dy: 0,
+            jumpPower: -10,
+            doubleJumpPower: -7,
+            gravity: 0.35,
+            isJumping: false,
+            canDoubleJump: false,
+            groundY: canvas.height - 95,
+            isDiving: false, // 潜り状態
+            diveTimer: 0     // 潜り時間
+        };
+
+        // オブジェクト配列
+        const obstacles = [];
+        const coins = [];
+        const hearts = [];
+        const flyingObstacles = [];
+        const clouds = [];
+
+        // タイマー系
+        let obstacleTimer = 0;
+        let nextObstacleInterval = 100;
+        let coinTimer = 0;
+        let heartTimer = 0;
+        let flyingObstacleTimer = 0;
+        let invincibleTimer = 0;
+
+        // 初期雲生成
+        for (let i = 0; i < 5; i++) {
+            clouds.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * 100 + 20,
+                width: 60 + Math.random() * 40,
+                speed: 0.5 + Math.random() * 0.5
+            });
+        }
+
+        // 障害物連続出現管理用
+        let lastObstacleType = null; // 'small' or 'tall'
+        let consecutiveCount = 0;
+
+        // ジャンプ入力管理
+        let jumpPressed = false;
+
+        function handleInput(e) {
+            if (gameState === 'TITLE') {
+                startGame();
+                return;
+            }
+            if (gameState === 'GAMEOVER') return;
+            if (gameState === 'PLAYING' && !gamePaused) {
+                // キャラクター1 (実現欲求くん) の処理: タップ/クリックで「潜る」
+                if (currentCharacterId === 1) {
+                    if (!player.isJumping && !player.isDiving) {
+                        // 地面にいて潜っていない時 -> 潜る
+                        if (characterAssets[1].swim.length > 0) {
+                            player.isDiving = true;
+                            player.diveTimer = 60; // 延長 (約1秒)
+                        }
+                    } else if (player.isDiving) {
+                        // 潜っている時にクリック -> ジャンプ！ (安全確認なし！タイミング重要)
+                        player.isDiving = false;
+                        player.dy = player.jumpPower;
+                        player.isJumping = true;
+                        player.canDoubleJump = true;
+                        player.y = player.groundY;
+                    }
+                }
+                // キャラクター0 (通常) の処理
+                else {
+                    if (!jumpPressed) {
+                        if (!player.isJumping) {
+                            player.dy = player.jumpPower;
+                            player.isJumping = true;
+                            player.canDoubleJump = true;
+                            jumpPressed = true;
+                        } else if (player.canDoubleJump) {
+                            player.dy = player.doubleJumpPower;
+                            player.canDoubleJump = false;
+                            jumpPressed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        canvas.addEventListener('mousedown', handleInput);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleInput(e);
+        }, { passive: false });
+        canvas.addEventListener('mouseup', () => { jumpPressed = false; });
+        canvas.addEventListener('touchend', () => { jumpPressed = false; });
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!jumpPressed) handleInput(e);
+            }
+            if (e.code === 'ArrowDown') {
+                // ArrowDownでの個別Dive機能は削除(統合されたため)
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') jumpPressed = false;
+        });
+
+        // UI制御関数
+        function toggleCharSelect() {
+            const screen = document.getElementById('charSelectScreen');
+            const btn = document.getElementById('charSelectBtn');
+            if (screen.style.display === 'none') {
+                screen.style.display = 'block';
+                btn.textContent = '閉じる';
+                gamePaused = true;
+            } else {
+                screen.style.display = 'none';
+                btn.textContent = 'キャラクター';
+                if (gameState === 'PLAYING') gamePaused = false;
+            }
+        }
+
+        function selectCharacter(id) {
+            currentCharacterId = id;
+            // UI更新
+            updateCharSelectUI(id);
+            // 選択したら自動で閉じる
+            toggleCharSelect();
+        }
+
+        function updateCharSelectUI(id) {
+            // Main Menu Cards
+            const cards = document.querySelectorAll('.char-card');
+            cards.forEach((card, index) => {
+                if (index === id) {
+                    // 選択中は少し明るくするか、そのままにするか。ユーザー要望は「枠は両方とも赤」
+                    // 選択状態を示すために背景を少し変える等は残すが、基本は黒
+                    card.style.backgroundColor = '#333';
+                } else {
+                    card.style.backgroundColor = '#000';
+                }
+                // 枠はCSSで赤に固定したが、ここでの上書きに注意
+                card.style.borderColor = '#ff5459';
+            });
+        }
+
+        function toggleRanking() {
+            const screen = document.getElementById('rankingScreen');
+            const btn = document.getElementById('rankingBtn');
+            if (screen.style.display === 'none') {
+                screen.style.display = 'block';
+                btn.textContent = '閉じる';
+                gamePaused = true;
+                displayRanking(); // ランキング表示関数を呼び出す
+            } else {
+                screen.style.display = 'none';
+                btn.textContent = 'ランキング';
+                if (gameState === 'PLAYING') gamePaused = false;
+            }
+        }
+
+        function drawGround() {
+            if (bgSkyImg.complete) {
+                const skyScale = canvas.height / bgSkyImg.height;
+                const skyScaledWidth = Math.ceil(bgSkyImg.width * skyScale);
+                const drawX = Math.floor(bgSkyOffset);
+                ctx.drawImage(bgSkyImg, drawX, 0, skyScaledWidth, canvas.height);
+                ctx.drawImage(bgSkyImg, drawX + skyScaledWidth, 0, skyScaledWidth, canvas.height);
+                ctx.drawImage(bgSkyImg, drawX + skyScaledWidth * 2, 0, skyScaledWidth, canvas.height);
+            }
+            if (bgGroundImg.complete) {
+                const scale = canvas.height / bgGroundImg.height;
+                const scaledWidth = Math.ceil(bgGroundImg.width * scale);
+                const drawX = Math.floor(bgGroundOffset);
+                ctx.drawImage(bgGroundImg, drawX, 0, scaledWidth, canvas.height);
+                ctx.drawImage(bgGroundImg, drawX + scaledWidth, 0, scaledWidth, canvas.height);
+                ctx.drawImage(bgGroundImg, drawX + scaledWidth * 2, 0, scaledWidth, canvas.height);
+            }
+        }
+
+        function drawClouds() {
+            ctx.fillStyle = 'rgba(167, 169, 169, 0.3)';
+            clouds.forEach(cloud => {
+                ctx.beginPath();
+                ctx.ellipse(cloud.x, cloud.y, cloud.width / 2, 20, 0, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawPlayer() {
+            const isDamage = invincibleTimer > 0;
+            const shouldShowDamage = isDamage && Math.floor(frameCount / 6) % 2 === 0;
+
+            // 現在のキャラクターのアセットを取得
+            const currentAssets = characterAssets[currentCharacterId];
+            if (!currentAssets) return;
+
+            let img;
+            // キャラクターID 0 (デフォルト) の場合: 画像描画
+            if (currentCharacterId === 0) {
+                if (player.isJumping) {
+                    const jIdx = player.canDoubleJump ? 0 : 1;
+                    img = shouldShowDamage ? currentAssets.dmgJump[jIdx] : currentAssets.jump[jIdx];
+                } else {
+                    const animIdx = Math.floor(frameCount / 8) % 4;
+                    img = shouldShowDamage ? currentAssets.dmgWalk[animIdx] : currentAssets.walk[animIdx];
+                }
+
+                if (img && img.complete) {
+                    ctx.drawImage(img, player.x, player.y, 50, 64);
+                }
+            }
+            // キャラクターID 1 (実現欲求くん)
+            else if (currentCharacterId === 1) {
+                if (player.isDiving) {
+                    // 潜り中は半透明にして「隠れてる感」を出す
+                    ctx.save();
+                    ctx.globalAlpha = 0.6;
+
+                    // 潜りアニメーション
+                    const animIdx = Math.floor(frameCount / 6) % 4;
+                    // z_swim1~4 をループ
+                    if (currentAssets.swim.length > animIdx) {
+                        img = currentAssets.swim[animIdx];
+                        if (img && img.complete) {
+                            // 通常座標で描画 (沈ませない)
+                            ctx.drawImage(img, player.x, player.y, 50, 64);
+                        }
+                    }
+                    ctx.restore();
+                } else if (player.isJumping) {
+                    // ジャンプ: 1から4までゆっくり使う (ループさせない)
+                    // ジャンプパワー -10 -> 0 -> +落下速度
+                    // dyを目安にする
+                    // -10 ... -5 ... 0 ... 5 ...
+                    // 4枚あるので、
+                    // 1枚目: 飛び上がり始め (dy < -6)
+                    // 2枚目: 上昇中〜頂点手前 (dy < -2)
+                    // 3枚目: 頂点付近〜降下開始 (dy < 4)
+                    // 4枚目: 降下後半 (dy >= 4)
+
+                    let jIdx = 0;
+                    if (player.dy < -6) jIdx = 0;
+                    else if (player.dy < -2) jIdx = 1;
+                    else if (player.dy < 4) jIdx = 2;
+                    else jIdx = 3;
+
+                    if (currentAssets.jump.length > jIdx) {
+                        img = shouldShowDamage ? currentAssets.dmgJump[jIdx] : currentAssets.jump[jIdx];
+                    } else if (currentAssets.jump.length > 0) {
+                        img = currentAssets.jump[0];
+                    }
+
+                    if (img && img.complete) {
+                        ctx.drawImage(img, player.x, player.y, 50, 64);
+                    }
+                } else {
+                    // 通常歩行
+                    const animIdx = Math.floor(frameCount / 8) % 4;
+                    if (currentAssets.walk.length > animIdx) {
+                        img = shouldShowDamage ? currentAssets.dmgWalk[animIdx] : currentAssets.walk[animIdx];
+                    }
+                    if (img && img.complete) {
+                        ctx.drawImage(img, player.x, player.y, 50, 64);
+                    }
+                }
+
+                // スーパーモードエフェクト (共通)
+                if (isSuperMode) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(player.x + 25, player.y + 32, 40, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // フォールバック (画像がロードされていない場合など)
+            if (!img || !img.complete) {
+                ctx.fillStyle = (currentCharacterId === 1) ? '#ff5459' : '#fff';
+                ctx.fillRect(player.x, player.y, 50, 64);
+            }
+        }
+
+        function drawUI() {
+            ctx.save();
+            ctx.font = "bold 20px 'Mochiy Pop One', sans-serif";
+            ctx.shadowColor = 'black';
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#000000';
+            ctx.fillStyle = '#ffffff';
+
+            ctx.textAlign = 'right';
+            ctx.strokeText(`SCORE: ${score}`, canvas.width - 20, 35);
+            ctx.fillText(`SCORE: ${score}`, canvas.width - 20, 35);
+
+            ctx.font = "bold 16px 'Mochiy Pop One', sans-serif";
+            ctx.fillStyle = '#e68161';
+            ctx.strokeText(`HI: ${highScore}`, canvas.width - 20, 60);
+            ctx.fillText(`HI: ${highScore}`, canvas.width - 20, 60);
+
+            ctx.textAlign = 'left';
+            for (let i = 0; i < 3; i++) {
+                const x = 20 + i * 40;
+                const y = 15;
+                if (i < lives) {
+                    if (heartItemImg.complete) ctx.drawImage(heartItemImg, x, y, 30, 25);
+                    else ctx.fillText('♥', x, y + 20);
+                } else {
+                    ctx.globalAlpha = 0.3;
+                    if (heartItemImg.complete) ctx.drawImage(heartItemImg, x, y, 30, 25);
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+
+            if (isSuperMode) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(20, canvas.height - 45, 200, 25);
+                const barWidth = 200 * (superModeTimer / 600);
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(20, canvas.height - 45, barWidth, 25);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = "bold 16px 'Mochiy Pop One', sans-serif";
+                ctx.strokeText("SUPER MODE!", 30, canvas.height - 27);
+                ctx.fillText("SUPER MODE!", 30, canvas.height - 27);
+            } else {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = "bold 16px 'Mochiy Pop One', sans-serif";
+                ctx.strokeText("GET 5 COINS!", 20, canvas.height - 55);
+                ctx.fillText("GET 5 COINS!", 20, canvas.height - 55);
+                for (let i = 0; i < 5; i++) {
+                    const x = 20 + i * 40;
+                    const y = canvas.height - 45;
+                    ctx.beginPath();
+                    ctx.arc(x + 15, y + 15, 18, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fill();
+                    if (i < comboCoins) {
+                        if (coinImgs[0] && coinImgs[0].complete) {
+                            ctx.drawImage(coinImgs[0], x, y, 30, 30);
+                        } else if (coinImg.complete) {
+                            ctx.drawImage(coinImg, x, y, 30, 30);
+                        }
+                    }
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawTitleScreen() {
+            updateBackground();
+            updateClouds();
+            drawGround();
+            drawClouds();
+
+            player.x = 250;
+            player.y = player.groundY;
+            player.isJumping = false;
+            frameCount++;
+            drawPlayer();
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.font = "bold 60px 'Mochiy Pop One', sans-serif";
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#000000';
+            ctx.strokeText("JUMP GAME", canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillStyle = '#ff5459';
+            ctx.fillText("JUMP GAME", canvas.width / 2, canvas.height / 2 - 40);
+
+            // コントロールパネルを表示 (タイトル画面でも操作可能に)
+            controlsPanel.classList.add('active');
+            // Ranking/CharSelectだけ有効化したいが、Pauseは無効化するか？
+            // 一旦全部表示でOK
+
+            if (Math.floor(frameCount / 30) % 2 === 0) {
+                ctx.font = "bold 30px 'Mochiy Pop One', sans-serif";
+                ctx.lineWidth = 4;
+                ctx.strokeText("- CLICK TO START -", canvas.width / 2, canvas.height / 2 + 50);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText("- CLICK TO START -", canvas.width / 2, canvas.height / 2 + 50);
+            }
+            ctx.restore();
+        }
+
+        function drawObjects() {
+            obstacles.forEach(obstacle => {
+                const drawX = Math.floor(obstacle.x);
+                const drawY = Math.floor(obstacle.y);
+                ctx.save();
+                if (obstacle.isBlownAway) {
+                    ctx.translate(drawX + obstacle.width / 2, drawY + obstacle.height / 2);
+                    ctx.rotate(obstacle.rotation);
+                    ctx.translate(-(drawX + obstacle.width / 2), -(drawY + obstacle.height / 2));
+                }
+                if (obstacle.isTall && obstacle2Img.complete) ctx.drawImage(obstacle2Img, drawX, drawY, 64, 128);
+                else if (!obstacle.isTall && obstacle1Img.complete) ctx.drawImage(obstacle1Img, drawX, drawY, 64, 64);
+                else {
+                    ctx.fillStyle = '#e68161';
+                    ctx.fillRect(drawX, drawY, obstacle.width, obstacle.height);
+                }
+                ctx.restore();
+            });
+
+            flyingObstacles.forEach(bird => {
+                const drawX = Math.floor(bird.x);
+                const drawY = Math.floor(bird.y);
+                const birdImg = Math.floor(bird.wingAnimation) % 2 === 0 ? bird1Img : bird2Img;
+                if (birdImg.complete) ctx.drawImage(birdImg, drawX, drawY, 59, 52);
+            });
+
+            coins.forEach(coin => {
+                const drawX = Math.floor(coin.x);
+                const drawY = Math.floor(coin.y);
+                const frameIndex = Math.floor(coin.rotation / (Math.PI / 2)) % 4;
+                if (coinImgs[frameIndex] && coinImgs[frameIndex].complete) {
+                    ctx.drawImage(coinImgs[frameIndex], drawX, drawY, 48, 48);
+                } else {
+                    ctx.drawImage(coinImg, drawX, drawY, 48, 48);
+                }
+            });
+
+            hearts.forEach(heart => {
+                const drawX = Math.floor(heart.x);
+                const drawY = Math.floor(heart.y);
+                const pulse = 1 + Math.sin(heart.pulse) * 0.1;
+                ctx.save();
+                ctx.translate(drawX + 18.5, drawY + 15.5);
+                ctx.scale(pulse, pulse);
+                if (heartItemImg.complete) ctx.drawImage(heartItemImg, -18.5, -15.5, 37, 31);
+                ctx.restore();
+            });
+        }
+
+        function updateBackground() {
+            const currentSpeed = (gameState === 'TITLE') ? 2 : gameSpeed;
+            if (bgSkyImg.complete) {
+                const skyScale = canvas.height / bgSkyImg.height;
+                const skyScaledWidth = Math.ceil(bgSkyImg.width * skyScale);
+                bgSkyOffset -= currentSpeed * 0.11;
+                if (bgSkyOffset <= -skyScaledWidth) bgSkyOffset += skyScaledWidth;
+            }
+            if (bgGroundImg.complete) {
+                const scale = canvas.height / bgGroundImg.height;
+                const scaledWidth = Math.ceil(bgGroundImg.width * scale);
+                bgGroundOffset -= currentSpeed * 0.5;
+                if (bgGroundOffset <= -scaledWidth) bgGroundOffset += scaledWidth;
+            }
+        }
+
+        function updateClouds() {
+            const currentSpeed = (gameState === 'TITLE') ? 2 : gameSpeed;
+            clouds.forEach(cloud => {
+                cloud.x -= cloud.speed * currentSpeed;
+                if (cloud.x + cloud.width < 0) {
+                    cloud.x = canvas.width + cloud.width;
+                    cloud.y = Math.random() * 100 + 20;
+                }
+            });
+        }
+
+
+        function updateGame() {
+            if (gamePaused) return;
+
+            if (player.x < 250) player.x += 1;
+
+            // 潜り状態の処理
+            if (player.isDiving) {
+                player.diveTimer--;
+
+                if (player.diveTimer <= 0) {
+                    // ダイブ時間切れ -> そのまま立ち上がる (強制)
+                    player.isDiving = false;
+                    // ここでの強制座標リセットは削除し、物理演算に任せる(障害物の上ならそのまま)
+                    // player.y = player.groundY; 
+                }
+            }
+
+            // 重力は常に適用 (潜り中でも障害物から降りたら落ちる)
+            player.dy += player.gravity;
+            player.y += player.dy;
+
+
+
+            let onObstacle = false;
+            // 着地判定 (潜り中でも障害物の上には乗れるようにする)
+            if (player.dy >= 0) {
+                for (let obstacle of obstacles) {
+                    const playerBottom = player.y + player.height;
+                    const obstacleTop = obstacle.y;
+                    const playerCenterX = player.x + player.width / 2;
+                    // 着地判定（甘め）
+                    if (playerCenterX > obstacle.x - 10 &&
+                        playerCenterX < obstacle.x + obstacle.width + 10 &&
+                        playerBottom >= obstacleTop - 10 &&
+                        playerBottom <= obstacleTop + 10) {
+                        player.y = obstacleTop - player.height;
+                        player.dy = 0;
+                        player.isJumping = false;
+                        player.canDoubleJump = false;
+                        onObstacle = true;
+                        break;
+                    }
+                }
+            }
+            if (!onObstacle && player.y >= player.groundY) {
+                player.y = player.groundY;
+                player.dy = 0;
+                player.isJumping = false;
+                player.canDoubleJump = false;
+            }
+            // 潜り中はゲームオーバー判定（穴落下など）も無効にするか要件次第だが、
+            // 今回は穴はないので左端に追いやられない限りOK
+            if (player.x + player.width < 0) {
+                lives = 0;
+                updateLivesDisplay();
+                endGame();
+            }
+
+            if (isSuperMode) {
+                superModeTimer--;
+                if (superModeTimer <= 0) {
+                    isSuperMode = false;
+                    gameSpeed = baseSpeed;
+                    comboCoins = 0;
+                }
+            }
+
+            const speedMultiplier = 0.5;
+
+            obstacleTimer++;
+            if (obstacleTimer > nextObstacleInterval) {
+                // デフォルトはランダム
+                let nextIsTall = Math.random() < 0.2;
+
+                // 3回連続チェック
+                if (isSuperMode && lastObstacleType) {
+                    if (consecutiveCount >= 2) {
+                        // 2回以上同じなら次は強制的に逆に変更（これで3回連続にはなるが4回目にはならない、あるいは3回目で変えるなら >=2 で判定して変える）
+                        // "３枚以上同じものが出ないように" -> 2回続いたら、3回目は変える
+                        nextIsTall = (lastObstacleType === 'small');
+                        consecutiveCount = 0;
+                    } else {
+                        // 同じタイプが続いたらカウントアップ、違ったらリセット
+                        const currentType = nextIsTall ? 'tall' : 'small';
+                        if (currentType === lastObstacleType) {
+                            consecutiveCount++;
+                        } else {
+                            consecutiveCount = 1; // 新しいタイプが1回目
+                        }
+                    }
+                } else {
+                    // スーパーモード以外や初回
+                    const currentType = nextIsTall ? 'tall' : 'small';
+                    if (currentType === lastObstacleType) consecutiveCount++;
+                    else consecutiveCount = 1;
+                }
+
+                lastObstacleType = nextIsTall ? 'tall' : 'small';
+
+                const obstacleHeight = nextIsTall ? 128 : 64;
+                const obstacleY = (player.groundY + player.height) - obstacleHeight;
+                obstacles.push({
+                    x: canvas.width, y: obstacleY, width: 64, height: obstacleHeight,
+                    isTall: nextIsTall, isBlownAway: false, rotation: 0
+                });
+                obstacleTimer = 0;
+                // スーパーモード中（かつ残り2秒以上）は地面が埋まるくらい大量出現
+                // 残り120フレーム(=2秒)を切ったら通常モードに戻す
+                if (isSuperMode && superModeTimer > 120) {
+                    // 以前の「敷き詰める」設定に戻す
+                    nextObstacleInterval = Math.random() * (15 - 12) + 12;
+                } else {
+                    nextObstacleInterval = Math.random() * (150 - 80) + 80;
+                }
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                if (obstacle.isBlownAway) {
+                    obstacle.x += 10; obstacle.y -= 15; obstacle.rotation += 0.5;
+                } else {
+                    obstacle.x -= gameSpeed * speedMultiplier;
+                }
+
+                // 衝突判定
+                // 障害物はダメージ無し (壁判定はcheckCollisionで行う)
+
+                // スーパーモード体当たり
+                if (isSuperMode && !obstacle.isBlownAway) {
+                    if (player.x < obstacle.x + obstacle.width &&
+                        player.x + player.width > obstacle.x &&
+                        player.y < obstacle.y + obstacle.height &&
+                        player.y + player.height > obstacle.y) {
+                        obstacle.isBlownAway = true;
+                        // スコア加算など
+                    }
+                }
+
+                if (obstacle.x + obstacle.width < 0 || obstacle.y < -200) {
+                    obstacles.splice(i, 1);
+                    if (!obstacle.isBlownAway) {
+                        score += 10;
+                        if (score % 100 === 0 && gameSpeed < 8 && !isSuperMode) gameSpeed += 0.3;
+                    }
+                }
+            }
+
+            flyingObstacleTimer++;
+            // スーパーモード中かつ残り2秒以上なら鳥も大量出現
+            const birdInterval = (isSuperMode && superModeTimer > 120) ? 25 : 100;
+
+            if (flyingObstacleTimer > birdInterval) {
+                // スピードの個体差を決定（遅い、普通、早い）
+                // 常に障害物(1.0)より早くしないと後退して見えるため、最小値を1.1以上に設定
+                const speedType = Math.random();
+                let speedFactor = 1.3; // 普通
+                if (speedType < 0.33) speedFactor = 1.1; // 少し遅い（でも地面よりは早い）
+                else if (speedType > 0.66) speedFactor = 1.8; // 早い
+
+                flyingObstacles.push({
+                    x: canvas.width, y: 100 + Math.random() * 150, width: 59, height: 52,
+                    wingAnimation: 0, isBlownAway: false, rotation: 0,
+                    speedFactor: speedFactor // 個体差スピード
+                });
+                flyingObstacleTimer = 0;
+            }
+
+            for (let i = flyingObstacles.length - 1; i >= 0; i--) {
+                const bird = flyingObstacles[i];
+                if (bird.isBlownAway) {
+                    bird.x += 15; bird.y -= 10; bird.rotation += 0.8;
+                } else {
+                    // 個別のスピード係数を使用
+                    bird.x -= (gameSpeed * speedMultiplier) * bird.speedFactor;
+                    bird.wingAnimation += 0.2;
+                }
+                if (bird.x + bird.width < 0 || bird.y < -200) {
+                    flyingObstacles.splice(i, 1);
+                    if (!bird.isBlownAway) score += 15;
+                }
+            }
+
+            coinTimer++;
+            if (coinTimer > 120) {
+                coins.push({ x: canvas.width, y: 150 + Math.random() * 150, size: 48, rotation: 0 });
+                coinTimer = 0;
+            }
+
+            for (let i = coins.length - 1; i >= 0; i--) {
+                const coin = coins[i];
+                coin.x -= gameSpeed * speedMultiplier;
+                coin.rotation += 0.1;
+
+                if (!player.isDiving &&
+                    player.x < coin.x + coin.size && player.x + player.width > coin.x &&
+                    player.y < coin.y + coin.size && player.y + player.height > coin.y) {
+
+                    coins.splice(i, 1);
+                    score += 20;
+
+                    if (!isSuperMode) {
+                        comboCoins++;
+                        if (comboCoins >= 5) {
+                            isSuperMode = true;
+                            superModeTimer = 600;
+                            baseSpeed = gameSpeed;
+                            gameSpeed *= 3;
+                            comboCoins = 0;
+                        }
+                    }
+                    continue;
+                }
+
+                if (coin.x + coin.size < 0) {
+                    coins.splice(i, 1);
+                }
+            }
+
+            heartTimer++;
+            if (heartTimer > 300) {
+                hearts.push({ x: canvas.width, y: 150 + Math.random() * 150, size: 37, pulse: 0 });
+                heartTimer = 0;
+            }
+
+            for (let i = hearts.length - 1; i >= 0; i--) {
+                const heart = hearts[i];
+                heart.x -= gameSpeed * speedMultiplier;
+                heart.pulse += 0.1;
+
+                if (!player.isDiving &&
+                    player.x < heart.x + heart.size && player.x + player.width > heart.x &&
+                    player.y < heart.y + heart.size && player.y + player.height > heart.y) {
+
+                    hearts.splice(i, 1);
+                    if (lives < 3) { lives++; updateLivesDisplay(); }
+                    else { score += 50; }
+                    continue;
+                }
+
+                if (heart.x + heart.size < 0) {
+                    hearts.splice(i, 1);
+                }
+            }
+
+            if (invincibleTimer > 0) invincibleTimer--;
+        }
+
+        // 衝突判定
+        function checkCollision() {
+            for (let obstacle of obstacles) {
+                // 壁ヒット判定（厳しめ）
+                if (!player.isDiving && !obstacle.isBlownAway &&
+                    player.x + 5 < obstacle.x + obstacle.width - 5 &&
+                    player.x + player.width - 5 > obstacle.x + 5 &&
+                    player.y + 20 < obstacle.y + obstacle.height - 5 &&
+                    player.y + player.height - 5 > obstacle.y + 5) {
+
+                    if (isSuperMode) {
+                        obstacle.isBlownAway = true; score += 50; continue;
+                    }
+                    // 潜り中は物理壁もスキップ
+                    if (!player.isDiving) {
+                        // 判定: 「横から当たった(通常移動)」か「中から出た(潜り解除)」か
+                        // プレイヤーの左端が、障害物の左端より奥(右)にあるなら「中」とみなす
+                        const isInside = (player.x > obstacle.x + 5);
+
+                        if (isInside) {
+                            // 中から出てしまった -> ダメージ & 前へ弾く
+                            lives--;
+                            updateLivesDisplay();
+                            if (lives <= 0) endGame();
+                            invincibleTimer = 90;
+                            player.x = obstacle.x + obstacle.width + 10;
+                        } else {
+                            // 外(左)から当たった -> 壁として止める (ダメージなし)
+                            player.x = obstacle.x - player.width + 5;
+                        }
+                    }
+                }
+            }
+
+            // Bird等のチェック...
+
+
+            if (invincibleTimer > 0) return false;
+            for (let bird of flyingObstacles) {
+                if (!player.isDiving && !bird.isBlownAway &&
+                    player.x + 10 < bird.x + bird.width - 10 &&
+                    player.x + player.width - 10 > bird.x + 10 &&
+                    player.y + 10 < bird.y + bird.height - 10 &&
+                    player.y + player.height - 10 > bird.y + 10) {
+
+                    if (isSuperMode) {
+                        bird.isBlownAway = true; score += 50; continue;
+                    }
+                    handleCollision();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function handleCollision() {
+            lives--;
+            updateLivesDisplay();
+            if (lives <= 0) endGame();
+            // 鳥などは弾き飛ばさない (障害物は updateGame で個別に処理済み)
+            invincibleTimer = 90;
+        }
+
+        function updateLivesDisplay() {
+            livesElement.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
+        }
+
+        function togglePause() {
+            if (gameState !== 'PLAYING' || gameOverScreen.classList.contains('show')) return;
+            gamePaused = !gamePaused;
+            pauseBtn.textContent = gamePaused ? '再開' : '一時停止';
+        }
+
+        function startGame() {
+            gameState = 'PLAYING';
+            score = 0;
+            lives = 3;
+            gameSpeed = 6;
+            baseSpeed = 6;
+            frameCount = 0;
+
+            obstacles.length = 0;
+            obstacleTimer = 0;
+            flyingObstacles.length = 0;
+            flyingObstacleTimer = 0;
+            coins.length = 0;
+            coinTimer = 0;
+            hearts.length = 0;
+            heartTimer = 0;
+            invincibleTimer = 0;
+            comboCoins = 0;
+            isSuperMode = false;
+
+            player.x = 250;
+            player.y = player.groundY;
+            player.dy = 0;
+            player.isJumping = false;
+            gamePaused = false;
+
+            scoreElement.textContent = score;
+            updateLivesDisplay();
+
+            gameOverScreen.classList.remove('show');
+            controlsPanel.classList.add('active');
+            pauseBtn.disabled = false;
+            pauseBtn.textContent = '一時停止';
+        }
+
+        function endGame() {
+            gameState = 'GAMEOVER';
+            saveScoreToHistory(score);
+
+            const isNewRecord = score > highScore;
+            if (isNewRecord) {
+                highScore = score;
+                highScoreElement.textContent = highScore;
+                localStorage.setItem('jumpGameHighScore', highScore.toString());
+                newRecordElement.style.display = 'block';
+            } else {
+                newRecordElement.style.display = 'none';
+            }
+
+            checkGalleryUnlocks(score);
+
+            finalScoreElement.textContent = `スコア: ${score}`;
+            gameOverScreen.classList.add('show');
+            pauseBtn.disabled = true;
+        }
+
+        function restartGame() {
+            gameOverScreen.classList.remove('show');
+            startGame();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === 'TITLE') {
+                drawTitleScreen();
+                requestAnimationFrame(draw);
+                return;
+            }
+
+            if (gameState === 'GAMEOVER') {
+                drawClouds();
+                drawGround();
+                drawObjects();
+                drawPlayer();
+                drawUI();
+                requestAnimationFrame(draw);
+                return;
+            }
+
+            if (gameState === 'PLAYING') {
+                if (!gamePaused) {
+                    frameCount++;
+                    updateBackground();
+                    updateClouds();
+                    updateGame();
+                    if (frameCount % 10 === 0) {
+                        score++;
+                        scoreElement.textContent = score;
+                        if (score % 200 === 0 && gameSpeed < 10) gameSpeed += 0.5;
+                    }
+                    checkCollision();
+                }
+
+                drawClouds();
+                drawGround();
+                drawObjects();
+                drawPlayer();
+                drawUI();
+
+                if (gamePaused) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = "bold 40px 'Mochiy Pop One', sans-serif";
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('一時停止中', canvas.width / 2, canvas.height / 2);
+                }
+
+                requestAnimationFrame(draw);
+            }
+        }
+
+        function saveScoreToHistory(score) {
+            let history = JSON.parse(localStorage.getItem('jumpGameScoreHistory') || '[]');
+            history.push({ score: score, date: new Date().toLocaleString('ja-JP') });
+            history.sort((a, b) => b.score - a.score);
+            history = history.slice(0, 10);
+            localStorage.setItem('jumpGameScoreHistory', JSON.stringify(history));
+        }
+        function toggleRanking() {
+            const screen = document.getElementById('rankingScreen');
+            if (screen.style.display === 'none') {
+                screen.style.display = 'block';
+                displayRanking();
+            } else {
+                screen.style.display = 'none';
+            }
+        }
+        function displayRanking() {
+            const history = JSON.parse(localStorage.getItem('jumpGameScoreHistory') || '[]');
+            const list = document.getElementById('rankingList');
+            if (history.length === 0) { list.innerHTML = '<p>まだスコアがありません</p>'; return; }
+            let html = '<ol style="padding-left: 20px;">';
+            history.forEach((entry, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+                html += `<li>${medal} ${entry.score}点 <span style="font-size:0.8em; color:#aaa;">${entry.date}</span></li>`;
+            });
+            list.innerHTML = html + '</ol>';
+        }
+        const galleryItems = [
+            { id: 1, requiredScore: 500, title: 'イラスト #1', unlocked: false, filename: 'illust_sca_500.png' },
+            { id: 2, requiredScore: 1000, title: 'イラスト #2', unlocked: false, filename: 'illust_sca_1000.png' },
+            { id: 3, requiredScore: 2000, title: 'イラスト #3', unlocked: false, filename: 'illust_sca_2000.png' },
+            { id: 4, requiredScore: 3000, title: 'イラスト #4', unlocked: false, filename: 'illust_sca_3000.png' },
+            { id: 5, requiredScore: 5000, title: 'イラスト #5', unlocked: false, filename: 'illust_sca_5000.png' }
+        ];
+        function loadGalleryProgress() {
+            const unlocked = JSON.parse(localStorage.getItem('jumpGameGalleryUnlocked') || '[]');
+            galleryItems.forEach(item => { item.unlocked = unlocked.includes(item.id); });
+        }
+        function checkGalleryUnlocks(score) {
+            const unlocked = JSON.parse(localStorage.getItem('jumpGameGalleryUnlocked') || '[]');
+            let isUpdated = false;
+            galleryItems.forEach(item => {
+                if (score >= item.requiredScore && !unlocked.includes(item.id)) {
+                    unlocked.push(item.id);
+                    isUpdated = true;
+                }
+            });
+            if (isUpdated) localStorage.setItem('jumpGameGalleryUnlocked', JSON.stringify(unlocked));
+        }
+        function toggleGallery() {
+            const screen = document.getElementById('galleryScreen');
+            if (screen.style.display === 'none') {
+                screen.style.display = 'block';
+                displayGallery();
+            } else {
+                screen.style.display = 'none';
+            }
+        }
+        function displayGallery() {
+            loadGalleryProgress();
+            const grid = document.getElementById('galleryGrid');
+            let html = '';
+            galleryItems.forEach(item => {
+                if (item.unlocked) {
+                    html += `<div><img src="${item.filename}" style="width:100%; border-radius:8px;"><p>${item.title}</p></div>`;
+                } else {
+                    html += `<div style="opacity:0.5; border:1px solid #555; padding:20px;">🔒 ${item.requiredScore}点</div>`;
+                }
+            });
+            grid.innerHTML = html;
+        }
+
+        function resizeCanvas() {
+            canvas.width = 800; canvas.height = 400;
+            player.groundY = canvas.height - 95;
+            player.y = player.groundY;
+        }
+        resizeCanvas();
+        loadGalleryProgress();
+
+        draw(); 
+    </script>
+</body>
+
+</html>
